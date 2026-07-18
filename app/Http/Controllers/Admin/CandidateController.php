@@ -21,7 +21,6 @@ class CandidateController extends Controller
     {
         return view('admin.candidates.index', [
             'candidates' => Candidate::with(['election', 'position'])->orderByDesc('id')->paginate(20),
-            'elections' => Election::orderByDesc('id')->get(),
         ]);
     }
 

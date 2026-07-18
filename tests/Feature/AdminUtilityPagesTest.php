@@ -67,6 +67,34 @@ class AdminUtilityPagesTest extends TestCase
             ->assertSee('voters.csv');
     }
 
+    public function test_import_page_shows_only_upload_workflows_the_user_is_allowed_to_run(): void
+    {
+        Permission::create(['name' => 'import voters']);
+        Permission::create(['name' => 'import candidates']);
+
+        $voterImporter = User::factory()->create();
+        $voterImporter->givePermissionTo('import voters');
+        $candidateImporter = User::factory()->create();
+        $candidateImporter->givePermissionTo('import candidates');
+        Election::create([
+            'title' => 'Available Import Election',
+            'status' => 'draft',
+            'created_by' => $voterImporter->id,
+        ]);
+
+        $this->actingAs($voterImporter)
+            ->get(route('admin.imports.index'))
+            ->assertOk()
+            ->assertSee(route('admin.voters.import'), false)
+            ->assertDontSee(route('admin.candidates.import'), false);
+
+        $this->actingAs($candidateImporter)
+            ->get(route('admin.imports.index'))
+            ->assertOk()
+            ->assertSee(route('admin.candidates.import'), false)
+            ->assertDontSee(route('admin.voters.import'), false);
+    }
+
     public function test_import_templates_can_be_downloaded(): void
     {
         Permission::create(['name' => 'import voters']);

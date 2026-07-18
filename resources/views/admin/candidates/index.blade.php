@@ -3,29 +3,13 @@
 @section('title', 'Candidates')
 
 @section('content')
-<div class="d-flex justify-content-between mb-3">
+<div class="d-flex justify-content-between align-items-center gap-2 mb-3">
     <h2 class="h4">Candidates</h2>
-    <a class="btn btn-primary" href="{{ route('admin.candidates.create') }}">New Candidate</a>
-</div>
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-body">
-        <form class="row g-2 align-items-end" method="POST" enctype="multipart/form-data" action="{{ route('admin.candidates.import') }}">
-            @csrf
-            <div class="col-md-4">
-                <label class="form-label">Election</label>
-                <select class="form-select" name="election_id" required>
-                    @foreach ($elections as $election)
-                        <option value="{{ $election->id }}">{{ $election->title }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-5">
-                <label class="form-label">CSV file</label>
-                <input class="form-control" type="file" name="file" accept=".csv,text/csv" required>
-            </div>
-            <div class="col-md-3"><button class="btn btn-secondary w-100">Import Candidates</button></div>
-        </form>
-        <div class="form-text mt-2">Columns: position, candidate_name, student_id, class_name, programme, house, gender, manifesto</div>
+    <div class="d-flex gap-2">
+        @can('import candidates')
+            <a class="btn btn-outline-secondary" href="{{ route('admin.imports.index') }}">Bulk import</a>
+        @endcan
+        <a class="btn btn-primary" href="{{ route('admin.candidates.create') }}">New Candidate</a>
     </div>
 </div>
 <div class="card border-0 shadow-sm">

@@ -3,15 +3,14 @@
 @section('title', 'Voters')
 
 @section('content')
-@if (session('generated_pins_import_id'))
-    <div class="alert alert-primary border-0 shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <span>PINs were generated for new voters. The encrypted report remains available for 24 hours.</span>
-        <a class="btn btn-primary btn-sm" href="{{ route('admin.imports.generated-pins', session('generated_pins_import_id')) }}">Download generated PINs</a>
-    </div>
-@endif
-<div class="d-flex justify-content-between mb-3">
+<div class="d-flex justify-content-between align-items-center gap-2 mb-3">
     <h2 class="h4">Voters</h2>
-    <a class="btn btn-primary" href="{{ route('admin.voters.create') }}">New Voter</a>
+    <div class="d-flex gap-2">
+        @can('import voters')
+            <a class="btn btn-outline-secondary" href="{{ route('admin.imports.index') }}">Bulk import</a>
+        @endcan
+        <a class="btn btn-primary" href="{{ route('admin.voters.create') }}">New Voter</a>
+    </div>
 </div>
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body">
@@ -25,22 +24,6 @@
                 </select>
             </div>
             <div class="col-md-3"><button class="btn btn-outline-primary w-100">Filter</button></div>
-        </form>
-    </div>
-</div>
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-body">
-        <form class="row g-2 align-items-end" method="POST" enctype="multipart/form-data" action="{{ route('admin.voters.import') }}">
-            @csrf
-            <div class="col-md-4">
-                <label class="form-label">Election ID</label>
-                <input class="form-control" type="number" name="election_id" required>
-            </div>
-            <div class="col-md-5">
-                <label class="form-label">CSV file <span class="text-muted fw-normal">(PIN is optional)</span></label>
-                <input class="form-control" type="file" name="file" accept=".csv,text/csv" required>
-            </div>
-            <div class="col-md-3"><button class="btn btn-secondary w-100">Import Voters</button></div>
         </form>
     </div>
 </div>

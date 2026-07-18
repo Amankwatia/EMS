@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Election;
 use App\Models\Import;
 use App\Services\AuditLogger;
 use App\Services\CsvWriter;
@@ -21,6 +22,10 @@ class ImportController extends Controller
         $canImportCandidates = $request->user()->can('import candidates');
 
         return view('admin.imports.index', [
+            'elections' => Election::query()
+                ->where('status', '!=', 'locked')
+                ->latest()
+                ->get(),
             'imports' => Import::query()
                 ->with(['election', 'importedBy'])
                 ->when(! $canImportVoters, fn ($query) => $query->where('import_type', '!=', 'voters'))
