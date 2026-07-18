@@ -1,0 +1,82 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\AuditLog;
+use App\Models\Election;
+use App\Models\Import;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
+use Tests\TestCase;
+
+class AdminUtilityPagesTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_audit_log_page_requires_permission_and_renders_logs(): void
+    {
+        Permission::create(['name' => 'view audit logs']);
+
+        $user = User::factory()->create();
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'test.action',
+            'description' => 'A safe audit description.',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.audit-logs.index'))
+            ->assertForbidden();
+
+        $user->givePermissionTo('view audit logs');
+
+        $this->actingAs($user)
+            ->get(route('admin.audit-logs.index'))
+            ->assertOk()
+            ->assertSee('test.action');
+    }
+
+    public function test_import_history_page_renders_imports_for_import_permission(): void
+    {
+        Permission::create(['name' => 'import voters']);
+
+        $user = User::factory()->create();
+        $user->givePermissionTo('import voters');
+        $election = Election::create([
+            'title' => 'Import History Election',
+            'status' => 'draft',
+            'created_by' => $user->id,
+        ]);
+        Import::create([
+            'election_id' => $election->id,
+            'import_type' => 'voters',
+            'filename' => 'voters.csv',
+            'total_rows' => 1,
+            'successful_rows' => 1,
+            'failed_rows' => 0,
+            'imported_by' => $user->id,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.imports.index'))
+            ->assertOk()
+            ->assertSee('voters.csv');
+    }
+
+    public function test_import_templates_can_be_downloaded(): void
+    {
+        Permission::create(['name' => 'import voters']);
+
+        $user = User::factory()->create();
+        $user->givePermissionTo('import voters');
+
+        $response = $this->actingAs($user)
+            ->get(route('admin.imports.template', 'voters'))
+            ->assertOk();
+
+        $this->assertStringContainsString('student_id', $response->streamedContent());
+    }
+}
