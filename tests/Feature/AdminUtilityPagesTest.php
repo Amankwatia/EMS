@@ -7,6 +7,7 @@ use App\Models\Election;
 use App\Models\Import;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -78,5 +79,40 @@ class AdminUtilityPagesTest extends TestCase
             ->assertOk();
 
         $this->assertStringContainsString('student_id', $response->streamedContent());
+    }
+
+    public function test_failed_import_reports_require_the_matching_import_permission(): void
+    {
+        Storage::fake('local');
+        Permission::create(['name' => 'import voters']);
+        Permission::create(['name' => 'import candidates']);
+
+        $user = User::factory()->create();
+        $user->givePermissionTo('import candidates');
+        $election = Election::create([
+            'title' => 'Restricted Import Election',
+            'status' => 'draft',
+            'created_by' => $user->id,
+        ]);
+        Storage::disk('local')->put('imports/voter-failures.csv', 'student_id,failure_reason');
+        $import = Import::create([
+            'election_id' => $election->id,
+            'import_type' => 'voters',
+            'filename' => 'voters.csv',
+            'failed_rows' => 1,
+            'failed_rows_path' => 'imports/voter-failures.csv',
+            'imported_by' => $user->id,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.imports.failed-rows', $import))
+            ->assertForbidden();
+
+        $user->givePermissionTo('import voters');
+
+        $this->actingAs($user)
+            ->get(route('admin.imports.failed-rows', $import))
+            ->assertOk();
     }
 }

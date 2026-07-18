@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\AuditLog;
 use App\Models\Election;
 use App\Models\SystemSetting;
 use App\Models\Voter;
+use App\Services\AuditLogger;
+use App\Services\CsvWriter;
 use App\Services\ElectionResultService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -15,6 +16,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    public function __construct(
+        private readonly AuditLogger $auditLogger,
+        private readonly CsvWriter $csvWriter,
+    ) {}
+
     public function resultsPdf(Request $request, Election $election, ElectionResultService $resultService): Response
     {
         $this->ensureResultsCanBeExported($election);
@@ -33,11 +39,11 @@ class ReportController extends Controller
 
         return response()->streamDownload(function () use ($payload): void {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Position', 'Candidate', 'Votes', 'Percentage', 'Winner/Tie']);
+            $this->csvWriter->writeRow($output, ['Position', 'Candidate', 'Votes', 'Percentage', 'Winner/Tie']);
 
             foreach ($payload['positions'] as $position) {
                 foreach ($payload['results'][$position->id]['candidateCounts'] as $row) {
-                    fputcsv($output, [
+                    $this->csvWriter->writeRow($output, [
                         $position->name,
                         $row['candidate']->candidate_name,
                         $row['votes'],
@@ -57,10 +63,10 @@ class ReportController extends Controller
 
         return response()->streamDownload(function () use ($election): void {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Student ID', 'Full Name', 'Class', 'Programme', 'House', 'Gender', 'Eligible', 'Voted', 'Voted At']);
+            $this->csvWriter->writeRow($output, ['Student ID', 'Full Name', 'Class', 'Programme', 'House', 'Gender', 'Eligible', 'Voted', 'Voted At']);
 
             Voter::where('election_id', $election->id)->orderBy('student_id')->each(function (Voter $voter) use ($output): void {
-                fputcsv($output, [
+                $this->csvWriter->writeRow($output, [
                     $voter->student_id,
                     $voter->full_name,
                     $voter->class_name,
@@ -92,14 +98,14 @@ class ReportController extends Controller
 
         return response()->streamDownload(function () use ($election, $status): void {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Status', 'Student ID', 'Full Name', 'Class', 'Programme', 'House', 'Gender', 'Eligible', 'Voted At']);
+            $this->csvWriter->writeRow($output, ['Status', 'Student ID', 'Full Name', 'Class', 'Programme', 'House', 'Gender', 'Eligible', 'Voted At']);
 
             Voter::where('election_id', $election->id)
                 ->when($status !== null, fn ($query) => $query->where('has_voted', $status === 'voted'))
                 ->orderBy('has_voted')
                 ->orderBy('student_id')
                 ->each(function (Voter $voter) use ($output): void {
-                    fputcsv($output, [
+                    $this->csvWriter->writeRow($output, [
                         $voter->has_voted ? 'Voted' : 'Not Voted',
                         $voter->student_id,
                         $voter->full_name,
@@ -122,10 +128,10 @@ class ReportController extends Controller
 
         return response()->streamDownload(function () use ($election): void {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Position', 'Candidate', 'Student ID', 'Class', 'Programme', 'House', 'Gender', 'Status']);
+            $this->csvWriter->writeRow($output, ['Position', 'Candidate', 'Student ID', 'Class', 'Programme', 'House', 'Gender', 'Status']);
 
             $election->candidates()->with('position')->orderBy('position_id')->orderBy('display_order')->each(function ($candidate) use ($output): void {
-                fputcsv($output, [
+                $this->csvWriter->writeRow($output, [
                     $candidate->position->name,
                     $candidate->candidate_name,
                     $candidate->student_id,
@@ -147,18 +153,18 @@ class ReportController extends Controller
 
         $registeredVoters = Voter::where('election_id', $election->id)->count();
         $eligibleVoters = Voter::where('election_id', $election->id)->where('is_eligible', true)->count();
-        $voted = Voter::where('election_id', $election->id)->where('has_voted', true)->count();
-        $notVoted = Voter::where('election_id', $election->id)->where('has_voted', false)->count();
-        $turnout = $registeredVoters > 0 ? round(($voted / $registeredVoters) * 100, 1) : 0;
+        $voted = Voter::where('election_id', $election->id)->where('is_eligible', true)->where('has_voted', true)->count();
+        $eligibleNotVoted = max(0, $eligibleVoters - $voted);
+        $turnout = $eligibleVoters > 0 ? round(($voted / $eligibleVoters) * 100, 1) : 0;
         $byClass = Voter::query()
-            ->selectRaw('class_name, count(*) as registered, sum(case when has_voted = 1 then 1 else 0 end) as voted')
+            ->selectRaw('class_name, count(*) as registered, sum(case when is_eligible = 1 then 1 else 0 end) as eligible, sum(case when is_eligible = 1 and has_voted = 1 then 1 else 0 end) as voted')
             ->where('election_id', $election->id)
             ->groupBy('class_name')
             ->orderBy('class_name')
             ->get();
         $reportSettings = $this->reportSettings();
 
-        return Pdf::loadView('admin.reports.turnout-pdf', compact('election', 'registeredVoters', 'eligibleVoters', 'voted', 'notVoted', 'turnout', 'byClass') + $reportSettings)
+        return Pdf::loadView('admin.reports.turnout-pdf', compact('election', 'registeredVoters', 'eligibleVoters', 'voted', 'eligibleNotVoted', 'turnout', 'byClass') + $reportSettings)
             ->download(str($election->title)->slug().'-turnout.pdf');
     }
 
@@ -169,16 +175,12 @@ class ReportController extends Controller
 
     private function auditExport(Request $request, Election $election, string $reportName): void
     {
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'election_id' => $election->id,
-            'role' => $request->user()->roles->pluck('name')->join(', '),
-            'action' => 'report.exported',
-            'description' => "Exported {$reportName} for {$election->title}.",
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'created_at' => now(),
-        ]);
+        $this->auditLogger->record(
+            $request,
+            'report.exported',
+            "Exported {$reportName} for {$election->title}.",
+            $election->id,
+        );
     }
 
     private function reportSettings(): array

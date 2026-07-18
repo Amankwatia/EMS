@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Election;
+use App\Models\Import;
 use App\Models\Position;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -92,7 +93,7 @@ class CandidateImportTest extends TestCase
             ])
             ->assertRedirect();
 
-        $import = \App\Models\Import::firstOrFail();
+        $import = Import::firstOrFail();
 
         $this->assertSame(1, $import->failed_rows);
         $this->assertNotNull($import->failed_rows_path);

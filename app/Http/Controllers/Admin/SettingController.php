@@ -4,18 +4,20 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class SettingController extends Controller
 {
-    public function edit()
+    public function edit(): View
     {
         return view('admin.settings.edit', [
             'settings' => SystemSetting::query()->pluck('value', 'key'),
         ]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'school_name' => ['nullable', 'string', 'max:255'],

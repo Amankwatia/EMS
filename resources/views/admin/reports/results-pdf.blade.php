@@ -26,6 +26,7 @@
 
     <table class="summary">
         <tr><th>Registered Voters</th><td>{{ $registeredVoters }}</td></tr>
+        <tr><th>Eligible Voters</th><td>{{ $eligibleVoters }}</td></tr>
         <tr><th>Completed Ballots</th><td>{{ $votersCompleted }}</td></tr>
         <tr><th>Turnout</th><td>{{ $turnout }}%</td></tr>
     </table>

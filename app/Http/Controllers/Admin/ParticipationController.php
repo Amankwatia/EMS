@@ -3,15 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\AuditLog;
 use App\Models\Election;
 use App\Models\Voter;
+use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ParticipationController extends Controller
 {
-    public function __invoke(Request $request)
+    public function __invoke(Request $request, AuditLogger $auditLogger): View
     {
         $elections = Election::query()->orderByDesc('id')->get();
         $election = $request->filled('election_id')
@@ -51,19 +52,16 @@ class ParticipationController extends Controller
         $registered = $election->voters()->count();
         $eligible = $election->voters()->where('is_eligible', true)->count();
         $voted = $election->voters()->where('has_voted', true)->count();
+        $eligibleVoted = $election->voters()->where('is_eligible', true)->where('has_voted', true)->count();
         $notVoted = $registered - $voted;
-        $turnout = $eligible > 0 ? round(($voted / $eligible) * 100, 1) : 0;
+        $turnout = $eligible > 0 ? round(($eligibleVoted / $eligible) * 100, 1) : 0;
 
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'election_id' => $election->id,
-            'role' => $request->user()->roles->pluck('name')->join(', '),
-            'action' => 'voter.participation_viewed',
-            'description' => "Viewed voter participation details for {$election->title}.",
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'created_at' => now(),
-        ]);
+        $auditLogger->record(
+            $request,
+            'voter.participation_viewed',
+            "Viewed voter participation details for {$election->title}.",
+            $election->id,
+        );
 
         return view('admin.participation.index', compact(
             'elections',

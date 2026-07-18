@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Election;
 use App\Models\SystemSetting;
 use App\Services\ElectionResultService;
+use Illuminate\View\View;
 
 class PublicResultController extends Controller
 {
-    public function __invoke(Election $election, ElectionResultService $resultService)
+    public function __invoke(Election $election, ElectionResultService $resultService): View
     {
         $globalPublicResultsEnabled = SystemSetting::query()
             ->where('key', 'public_results_enabled')

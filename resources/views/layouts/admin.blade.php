@@ -18,8 +18,7 @@
             @include('admin.partials.navigation')
         </div>
         <div class="admin-sidebar-footer">
-            <span class="status-dot"></span>
-            <span>System online</span>
+            @include('partials.powered-by', ['variant' => 'dark'])
         </div>
     </aside>
 
@@ -31,7 +30,10 @@
             </a>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-        <div class="offcanvas-body">@include('admin.partials.navigation')</div>
+        <div class="offcanvas-body d-flex flex-column">
+            <div class="flex-grow-1">@include('admin.partials.navigation')</div>
+            <div class="admin-mobile-credit">@include('partials.powered-by', ['variant' => 'dark'])</div>
+        </div>
     </div>
 
     <main class="admin-main">

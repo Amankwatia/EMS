@@ -3,24 +3,28 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\AuditLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    public function index()
+    public function __construct(private readonly AuditLogger $auditLogger) {}
+
+    public function index(): View
     {
         return view('admin.users.index', [
             'users' => User::query()->with('roles')->orderBy('name')->paginate(20),
         ]);
     }
 
-    public function create()
+    public function create(): View
     {
         return view('admin.users.form', [
             'staffUser' => new User,
@@ -28,7 +32,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
 
@@ -44,12 +48,12 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('status', 'Staff user created.');
     }
 
-    public function show(User $user)
+    public function show(User $user): RedirectResponse
     {
         return redirect()->route('admin.users.edit', $user);
     }
 
-    public function edit(User $user)
+    public function edit(User $user): View
     {
         return view('admin.users.form', [
             'staffUser' => $user->load('roles'),
@@ -57,7 +61,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $user)
+    public function update(Request $request, User $user): RedirectResponse
     {
         $data = $this->validated($request, $user);
 
@@ -78,7 +82,7 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('status', 'Staff user updated.');
     }
 
-    public function destroy(Request $request, User $user)
+    public function destroy(Request $request, User $user): RedirectResponse
     {
         abort_if($user->is($request->user()), 422, 'You cannot delete your own account.');
 
@@ -103,14 +107,6 @@ class UserController extends Controller
 
     private function audit(Request $request, string $action, string $description): void
     {
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'role' => $request->user()->roles->pluck('name')->join(', '),
-            'action' => $action,
-            'description' => $description,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'created_at' => now(),
-        ]);
+        $this->auditLogger->record($request, $action, $description);
     }
 }

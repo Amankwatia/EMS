@@ -20,6 +20,7 @@
                 <th class="text-end">Successful</th>
                 <th class="text-end">Failed</th>
                 <th>Failed Rows</th>
+                <th>Generated PINs</th>
                 <th>Imported By</th>
             </tr>
             </thead>
@@ -36,6 +37,16 @@
                     <td>
                         @if ($import->failed_rows_path)
                             <a href="{{ route('admin.imports.failed-rows', $import) }}">Download</a>
+                        @else
+                            -
+                        @endif
+                    </td>
+                    <td>
+                        @if ($import->generated_pins_expires_at?->isFuture() && $import->generated_pins_path)
+                            <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.imports.generated-pins', $import) }}">Download</a>
+                            <div class="small text-muted mt-1">Expires {{ $import->generated_pins_expires_at->diffForHumans() }}</div>
+                        @elseif ($import->generated_pins_expires_at)
+                            <span class="text-muted">Expired</span>
                         @else
                             -
                         @endif

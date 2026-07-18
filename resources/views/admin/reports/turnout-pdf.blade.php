@@ -24,20 +24,21 @@
         <tr><th>Registered Voters</th><td>{{ $registeredVoters }}</td></tr>
         <tr><th>Eligible Voters</th><td>{{ $eligibleVoters }}</td></tr>
         <tr><th>Voted</th><td>{{ $voted }}</td></tr>
-        <tr><th>Not Voted</th><td>{{ $notVoted }}</td></tr>
+        <tr><th>Eligible Voters Yet to Vote</th><td>{{ $eligibleNotVoted }}</td></tr>
         <tr><th>Turnout</th><td>{{ $turnout }}%</td></tr>
     </table>
 
     <h2>Turnout By Class</h2>
     <table>
-        <thead><tr><th>Class</th><th>Registered</th><th>Voted</th><th>Turnout</th></tr></thead>
+        <thead><tr><th>Class</th><th>Registered</th><th>Eligible</th><th>Voted</th><th>Turnout</th></tr></thead>
         <tbody>
         @foreach ($byClass as $row)
             <tr>
                 <td>{{ $row->class_name ?: 'Unspecified' }}</td>
                 <td>{{ $row->registered }}</td>
+                <td>{{ $row->eligible }}</td>
                 <td>{{ $row->voted }}</td>
-                <td>{{ $row->registered > 0 ? round(($row->voted / $row->registered) * 100, 1) : 0 }}%</td>
+                <td>{{ $row->eligible > 0 ? round(($row->voted / $row->eligible) * 100, 1) : 0 }}%</td>
             </tr>
         @endforeach
         </tbody>

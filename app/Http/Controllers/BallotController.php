@@ -2,23 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AuditLog;
 use App\Models\Candidate;
 use App\Models\Voter;
+use App\Services\AuditLogger;
 use App\Services\VoteCastingService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class BallotController extends Controller
 {
-    public function confirm(Request $request)
+    public function __construct(private readonly AuditLogger $auditLogger) {}
+
+    public function confirm(Request $request): View
     {
         $voter = $this->voter($request);
 
         return view('voter.confirm', compact('voter'));
     }
 
-    public function show(Request $request)
+    public function show(Request $request): View
     {
         $voter = $this->voter($request);
         $this->ensureCanVote($request, $voter);
@@ -30,7 +34,7 @@ class BallotController extends Controller
         return view('voter.ballot', compact('voter', 'election'));
     }
 
-    public function review(Request $request)
+    public function review(Request $request): View
     {
         $voter = $this->voter($request);
         $this->ensureCanVote($request, $voter);
@@ -52,7 +56,7 @@ class BallotController extends Controller
         return view('voter.review', compact('voter', 'election', 'choices', 'candidates'));
     }
 
-    public function submit(Request $request, VoteCastingService $voteCastingService)
+    public function submit(Request $request, VoteCastingService $voteCastingService): RedirectResponse
     {
         $voter = $this->voter($request);
         $this->ensureCanVote($request, $voter);
@@ -99,14 +103,13 @@ class BallotController extends Controller
 
     private function audit(Request $request, Voter $voter, string $action, string $description, string $severity = 'info'): void
     {
-        AuditLog::create([
-            'election_id' => $voter->election_id,
-            'action' => $action,
-            'description' => "{$description} Student ID {$voter->student_id}.",
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'severity' => $severity,
-            'created_at' => now(),
-        ]);
+        $this->auditLogger->record(
+            $request,
+            $action,
+            "{$description} Student ID {$voter->student_id}.",
+            $voter->election_id,
+            $severity,
+            false,
+        );
     }
 }

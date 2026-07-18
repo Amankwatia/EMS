@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Voter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -98,7 +99,7 @@ class VoterResetTest extends TestCase
 
     public function test_authorized_admin_can_generate_new_voter_pin_once(): void
     {
-        \Spatie\Permission\Models\Permission::create(['name' => 'manage voters']);
+        Permission::create(['name' => 'manage voters']);
 
         $admin = User::factory()->create();
         $admin->givePermissionTo('manage voters');

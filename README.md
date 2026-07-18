@@ -13,7 +13,7 @@ Phase 1 MVP is functional, and the first Phase 2/3 pieces are in place:
 - Candidate photo upload support
 - CSV voter import
 - CSV candidate import
-- CSV import templates and failed-row correction downloads
+- CSV import templates, failed-row correction downloads, and automatic voter PIN generation
 - Separate voter login
 - Ballot, review, and final submission flow
 - Multi-choice positions where `max_choices` is greater than 1
@@ -30,7 +30,8 @@ Phase 1 MVP is functional, and the first Phase 2/3 pieces are in place:
 - School name/logo settings used in PDF reports
 - Backup/local-network guidance screen
 - Super Admin-only voted-status reset with required reason
-- One-time generated voter PIN reset with audit logging
+- Generated voter PIN reports encrypted at rest, permission-gated, audited, and automatically expired after 24 hours
+- One-time individual voter PIN reset with audit logging
 - Locked elections block related position, candidate, voter, import, and PIN/reset changes until explicitly unlocked
 - Public result page after publication when enabled
 - Automated tests covering voting, permissions, imports, exports, settings, public results, and locking rules
@@ -105,13 +106,19 @@ Use the election readiness screen before opening voting. It checks schedule, pos
 
 ## CSV Voter Import
 
-Required columns:
+Required CSV headers:
+
+```csv
+student_id,full_name,class_name,programme,house,gender
+```
+
+The `student_id` and `full_name` values are required for every row. Class, programme, house, and gender values may be blank. A `pin` column may also be included:
 
 ```csv
 student_id,full_name,class_name,programme,house,gender,pin
 ```
 
-PINs are hashed before storage.
+When a new voter has no PIN, the system generates a secure six-digit PIN. Authorized staff can download the encrypted generated-PIN report multiple times for 24 hours from the import history screen. Supplied PINs and generated PINs are hashed before storage. Re-importing an existing voter with no PIN preserves their current PIN.
 
 Voter PINs can also be reset from the voter edit screen. The generated PIN is shown once and then stored only as a hash.
 
@@ -171,6 +178,11 @@ Use a stable power source/UPS and back up the database before and after the elec
 - Protect `.env`
 - Review audit logs
 - Do not manually edit vote totals
+- Run Laravel's scheduler so expired generated-PIN reports are deleted:
+
+```cron
+* * * * cd /path/to/application && php artisan schedule:run >> /dev/null 2>&1
+```
 
 ## Verification
 

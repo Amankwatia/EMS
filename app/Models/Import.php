@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'successful_rows',
     'failed_rows',
     'failed_rows_path',
+    'generated_pins_path',
+    'generated_pins_expires_at',
     'imported_by',
     'created_at',
 ])]
@@ -25,6 +27,7 @@ class Import extends Model
     {
         return [
             'created_at' => 'datetime',
+            'generated_pins_expires_at' => 'datetime',
         ];
     }
 

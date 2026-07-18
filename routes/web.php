@@ -1,13 +1,13 @@
 <?php
 
-use App\Http\Controllers\Admin\CandidateController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupGuideController;
+use App\Http\Controllers\Admin\CandidateController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ElectionController;
 use App\Http\Controllers\Admin\ImportController;
-use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\ParticipationController;
+use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ResultController;
 use App\Http\Controllers\Admin\SettingController;
@@ -75,6 +75,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('imports/{import}/failed-rows', [ImportController::class, 'failedRows'])
         ->middleware('permission:import voters|import candidates')
         ->name('imports.failed-rows');
+    Route::get('imports/{import}/generated-pins', [ImportController::class, 'generatedPins'])
+        ->middleware('permission:import voters')
+        ->name('imports.generated-pins');
 
     Route::get('audit-logs', AuditLogController::class)
         ->middleware('permission:view audit logs')

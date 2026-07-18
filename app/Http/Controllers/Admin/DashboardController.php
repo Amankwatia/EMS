@@ -8,15 +8,16 @@ use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Position;
 use App\Models\Voter;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke()
+    public function __invoke(): View
     {
         $election = Election::query()->latest()->first();
         $registered = $election ? Voter::where('election_id', $election->id)->count() : 0;
         $eligible = $election ? Voter::where('election_id', $election->id)->where('is_eligible', true)->count() : 0;
-        $voted = $election ? Voter::where('election_id', $election->id)->where('has_voted', true)->count() : 0;
+        $voted = $election ? Voter::where('election_id', $election->id)->where('is_eligible', true)->where('has_voted', true)->count() : 0;
 
         return view('admin.dashboard', [
             'election' => $election,

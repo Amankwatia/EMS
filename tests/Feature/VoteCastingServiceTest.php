@@ -67,4 +67,46 @@ class VoteCastingServiceTest extends TestCase
         $this->expectException(ValidationException::class);
         app(VoteCastingService::class)->cast($voter->fresh(), [$position->id => $candidate->id]);
     }
+
+    public function test_duplicate_candidate_ids_are_counted_only_once_per_position(): void
+    {
+        $user = User::factory()->create();
+        $election = Election::create([
+            'title' => 'Duplicate Choice Election',
+            'status' => 'active',
+            'start_at' => now()->subMinute(),
+            'end_at' => now()->addHour(),
+            'created_by' => $user->id,
+        ]);
+        $position = Position::create([
+            'election_id' => $election->id,
+            'name' => 'Committee Members',
+            'max_choices' => 2,
+            'is_required' => true,
+            'is_active' => true,
+        ]);
+        $candidate = Candidate::create([
+            'election_id' => $election->id,
+            'position_id' => $position->id,
+            'candidate_name' => 'Candidate One',
+            'status' => 'active',
+        ]);
+        $voter = Voter::create([
+            'election_id' => $election->id,
+            'student_id' => 'STD-DUPLICATE',
+            'full_name' => 'Duplicate Choice Student',
+            'pin_hash' => Hash::make('1111'),
+            'is_eligible' => true,
+        ]);
+
+        app(VoteCastingService::class)->cast($voter, [
+            $position->id => [$candidate->id, (string) $candidate->id],
+        ]);
+
+        $this->assertDatabaseCount('anonymous_votes', 1);
+        $this->assertDatabaseHas('anonymous_votes', [
+            'position_id' => $position->id,
+            'candidate_id' => $candidate->id,
+        ]);
+    }
 }

@@ -31,6 +31,10 @@
             <main>
                 {{ $slot }}
             </main>
+
+            <footer class="public-powered-footer container">
+                @include('partials.powered-by')
+            </footer>
         </div>
     </body>
 </html>

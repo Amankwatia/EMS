@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Models\AuditLog;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +13,8 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
+    public function __construct(private readonly AuditLogger $auditLogger) {}
+
     /**
      * Display the login view.
      */
@@ -29,14 +31,13 @@ class AuthenticatedSessionController extends Controller
         try {
             $request->authenticate();
         } catch (ValidationException $exception) {
-            AuditLog::create([
-                'action' => 'admin.login_failed',
-                'description' => "Failed admin login attempt for {$request->input('email')}.",
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'severity' => 'warning',
-                'created_at' => now(),
-            ]);
+            $this->auditLogger->record(
+                $request,
+                'admin.login_failed',
+                "Failed admin login attempt for {$request->input('email')}.",
+                severity: 'warning',
+                includeAuthenticatedUser: false,
+            );
 
             throw $exception;
         }
@@ -44,15 +45,11 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
         $request->user()->load('roles');
 
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'role' => $request->user()->roles->pluck('name')->join(', '),
-            'action' => 'admin.login',
-            'description' => "Admin {$request->user()->email} logged in.",
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'created_at' => now(),
-        ]);
+        $this->auditLogger->record(
+            $request,
+            'admin.login',
+            "Admin {$request->user()->email} logged in.",
+        );
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

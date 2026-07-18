@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
-<main class="min-vh-100 d-flex align-items-center py-5">
+<main class="min-vh-100 d-flex flex-column justify-content-center py-5">
     <div class="container">
         @if (session('status'))
             <div class="alert alert-success voter-card mx-auto">{{ session('status') }}</div>
@@ -22,6 +22,9 @@
         @endif
         @yield('content')
     </div>
+    <footer class="public-powered-footer container">
+        @include('partials.powered-by')
+    </footer>
 </main>
 </body>
 </html>

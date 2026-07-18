@@ -78,6 +78,7 @@ class VoteCastingService
                     }
 
                     $this->recordAnonymousVote($election, $position, null, $anonymousBallotCode, true);
+
                     continue;
                 }
 
@@ -147,6 +148,7 @@ class VoteCastingService
 
         return collect(is_array($choice) ? $choice : [$choice])
             ->filter(fn ($value) => $value !== null && $value !== '')
+            ->unique(fn ($value) => (string) $value)
             ->values();
     }
 }

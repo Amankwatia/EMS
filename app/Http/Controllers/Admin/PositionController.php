@@ -6,18 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\Election;
 use App\Models\Position;
 use App\Services\LockedElectionGuard;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class PositionController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         return view('admin.positions.index', [
             'positions' => Position::with('election')->orderByDesc('id')->paginate(20),
         ]);
     }
 
-    public function create()
+    public function create(): View
     {
         return view('admin.positions.form', [
             'position' => new Position(['max_choices' => 1, 'is_required' => true, 'is_active' => true]),
@@ -25,7 +27,7 @@ class PositionController extends Controller
         ]);
     }
 
-    public function store(Request $request, LockedElectionGuard $lockedElectionGuard)
+    public function store(Request $request, LockedElectionGuard $lockedElectionGuard): RedirectResponse
     {
         $data = $this->validated($request);
         $lockedElectionGuard->ensureUnlocked(Election::findOrFail($data['election_id']));
@@ -35,12 +37,12 @@ class PositionController extends Controller
         return redirect()->route('admin.positions.index')->with('status', 'Position created.');
     }
 
-    public function show(Position $position)
+    public function show(Position $position): RedirectResponse
     {
         return redirect()->route('admin.positions.edit', $position);
     }
 
-    public function edit(Position $position)
+    public function edit(Position $position): View
     {
         return view('admin.positions.form', [
             'position' => $position,
@@ -48,7 +50,7 @@ class PositionController extends Controller
         ]);
     }
 
-    public function update(Request $request, Position $position, LockedElectionGuard $lockedElectionGuard)
+    public function update(Request $request, Position $position, LockedElectionGuard $lockedElectionGuard): RedirectResponse
     {
         $data = $this->validated($request);
         $lockedElectionGuard->ensureUnlocked($position->election);
@@ -59,7 +61,7 @@ class PositionController extends Controller
         return redirect()->route('admin.positions.index')->with('status', 'Position updated.');
     }
 
-    public function destroy(Position $position, LockedElectionGuard $lockedElectionGuard)
+    public function destroy(Position $position, LockedElectionGuard $lockedElectionGuard): RedirectResponse
     {
         $lockedElectionGuard->ensureUnlocked($position->election);
         abort_if($position->election->anonymousVotes()->exists(), 422, 'Positions cannot be deleted after votes exist.');

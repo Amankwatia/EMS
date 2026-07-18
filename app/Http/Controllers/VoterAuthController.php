@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AuditLog;
 use App\Models\Election;
 use App\Models\Voter;
+use App\Services\AuditLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\View\View;
 
 class VoterAuthController extends Controller
 {
-    public function create()
+    public function __construct(private readonly AuditLogger $auditLogger) {}
+
+    public function create(): View
     {
         return view('voter.login', [
             'elections' => Election::query()
@@ -20,7 +24,7 @@ class VoterAuthController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'election_id' => ['required', 'exists:elections,id'],
@@ -34,15 +38,14 @@ class VoterAuthController extends Controller
             ->first();
 
         if (! $voter || ! Hash::check($data['pin'], $voter->pin_hash)) {
-            AuditLog::create([
-                'election_id' => $data['election_id'],
-                'action' => 'voter.login_failed',
-                'description' => "Failed voter login attempt for student ID {$data['student_id']}.",
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'severity' => 'warning',
-                'created_at' => now(),
-            ]);
+            $this->auditLogger->record(
+                $request,
+                'voter.login_failed',
+                "Failed voter login attempt for student ID {$data['student_id']}.",
+                (int) $data['election_id'],
+                'warning',
+                false,
+            );
 
             return back()->withErrors(['student_id' => 'Invalid Student ID or PIN.'])->onlyInput('student_id', 'election_id');
         }
@@ -65,7 +68,7 @@ class VoterAuthController extends Controller
         return redirect()->route('voter.confirm');
     }
 
-    public function destroy(Request $request)
+    public function destroy(Request $request): RedirectResponse
     {
         $request->session()->forget(['voter_id', 'ballot_choices']);
 
@@ -74,14 +77,13 @@ class VoterAuthController extends Controller
 
     private function audit(Request $request, Voter $voter, string $action, string $description, string $severity = 'info'): void
     {
-        AuditLog::create([
-            'election_id' => $voter->election_id,
-            'action' => $action,
-            'description' => "{$description} Student ID {$voter->student_id}.",
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'severity' => $severity,
-            'created_at' => now(),
-        ]);
+        $this->auditLogger->record(
+            $request,
+            $action,
+            "{$description} Student ID {$voter->student_id}.",
+            $voter->election_id,
+            $severity,
+            false,
+        );
     }
 }

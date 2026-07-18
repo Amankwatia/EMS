@@ -6,6 +6,4 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['key', 'value'])]
-class SystemSetting extends Model
-{
-}
+class SystemSetting extends Model {}

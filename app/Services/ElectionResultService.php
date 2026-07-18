@@ -11,8 +11,12 @@ class ElectionResultService
     public function payload(Election $election): array
     {
         $registeredVoters = Voter::where('election_id', $election->id)->count();
-        $votersCompleted = Voter::where('election_id', $election->id)->where('has_voted', true)->count();
-        $turnout = $registeredVoters > 0 ? round(($votersCompleted / $registeredVoters) * 100, 1) : 0;
+        $eligibleVoters = Voter::where('election_id', $election->id)->where('is_eligible', true)->count();
+        $votersCompleted = Voter::where('election_id', $election->id)
+            ->where('is_eligible', true)
+            ->where('has_voted', true)
+            ->count();
+        $turnout = $eligibleVoters > 0 ? round(($votersCompleted / $eligibleVoters) * 100, 1) : 0;
         $positions = $election->positions()->with('candidates')->get();
         $results = [];
 
@@ -47,6 +51,6 @@ class ElectionResultService
             ];
         }
 
-        return compact('election', 'positions', 'registeredVoters', 'votersCompleted', 'turnout', 'results');
+        return compact('election', 'positions', 'registeredVoters', 'eligibleVoters', 'votersCompleted', 'turnout', 'results');
     }
 }
